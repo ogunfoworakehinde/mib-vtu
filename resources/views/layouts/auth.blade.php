@@ -55,10 +55,11 @@
             text-align: center;
             margin-bottom: 2rem;
         }
-        .logo-area .logo-icon {
-            font-size: 48px;
-            color: var(--primary);
+        .logo-area img {
+            height: 60px;
+            width: auto;
             display: block;
+            margin: 0 auto;
         }
         .logo-area h4 {
             color: var(--text);
@@ -151,7 +152,7 @@
 
         <!-- Logo area -->
         <div class="logo-area">
-            <i class="bi bi-wallet2 logo-icon"></i>
+            <img src="{{ asset('images/logo.png') }}" alt="Logo">
             <h4>{{ config('app.name', 'MIB GROUP') }}</h4>
         </div>
 
