@@ -270,9 +270,20 @@
             from { transform: translateY(50px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
+
+            @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
+<div id="globalLoader" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background: var(--bg); z-index:9999; align-items:center; justify-content:center;">
+    <div style="position:relative; width:100px; height:100px;">
+        <img src="{{ asset('images/logo.png') }}" alt="Logo" style="width:80px; height:80px; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:2; border-radius:50%;">
+        <div style="position:absolute; top:0; left:0; width:100%; height:100%; border:4px solid transparent; border-top-color: var(--primary); border-radius:50%; animation: spin 1s linear infinite;"></div>
+    </div>
+</div>
     @auth
     @php
         $hour = now()->hour;
@@ -401,5 +412,27 @@
         }
     </script>
     @stack('scripts')
+<script>
+    // Global loader logic
+    const loader = document.getElementById('globalLoader');
+    function showLoader() { loader.style.display = 'flex'; }
+    function hideLoader() { loader.style.display = 'none'; }
+
+    window.addEventListener('beforeunload', showLoader);
+    window.addEventListener('load', hideLoader);
+
+    document.addEventListener('click', function(e) {
+        let el = e.target.closest('a');
+        if(el && el.getAttribute('href') && !el.getAttribute('href').startsWith('#') && !el.getAttribute('target')) {
+            showLoader();
+        }
+    });
+
+    document.addEventListener('submit', function(e) {
+        if(!e.target.hasAttribute('data-no-loader')) {
+            showLoader();
+        }
+    });
+</script>
 </body>
 </html>

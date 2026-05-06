@@ -55,18 +55,22 @@ document.getElementById('regForm').addEventListener('submit', function(e){
     })
     .then(r => r.json())
     .then(data => {
-        if(data.message) {
-            document.getElementById('regMsg').innerHTML = '<div class="alert alert-success py-2">' + data.message + '</div>';
-        } else if(data.error) {
-            document.getElementById('regMsg').innerHTML = '<div class="alert alert-danger py-2">' + data.error + '</div>';
-        } else if(data.errors) {
-            let errors = '';
-            for(let key in data.errors) {
-                errors += data.errors[key].join('<br>') + '<br>';
-            }
-            document.getElementById('regMsg').innerHTML = '<div class="alert alert-danger py-2">' + errors + '</div>';
+    if(data.message) {
+        document.getElementById('regMsg').innerHTML = '<div class="alert alert-success py-2">' + data.message + ' Redirecting to login...</div>';
+        setTimeout(() => {
+            window.location.href = '{{ route("login") }}';
+        }, 1500);
+    } else if(data.error) {
+        document.getElementById('regMsg').innerHTML = '<div class="alert alert-danger py-2">' + data.error + '</div>';
+    } else if(data.errors) {
+        let errors = '';
+        for(let key in data.errors) {
+            errors += data.errors[key].join('<br>') + '<br>';
         }
-    })
+        document.getElementById('regMsg').innerHTML = '<div class="alert alert-danger py-2">' + errors + '</div>';
+    }
+   })
+
     .catch(() => {
         // Fallback to normal form submission if AJAX fails
         document.getElementById('regForm').submit();
