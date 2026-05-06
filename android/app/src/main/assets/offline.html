@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>M I B GROUP LTD</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #f5f7fb;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 2.5rem 2rem;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+        .logo {
+            width: 80px;
+            height: auto;
+            margin-bottom: 1.5rem;
+        }
+        h3 {
+            font-size: 1.2rem;
+            color: #1a1a2e;
+            margin-bottom: 0.5rem;
+        }
+        p {
+            color: #555;
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+        .btn {
+            display: inline-block;
+            background: #0000CC;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 15px;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .btn:active { transform: scale(0.97); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="logo.png" alt="Logo" class="logo">
+        <h3>M I B GROUP LTD</h3>
+        <p>No Internet Connection</p>
+        <p style="color: #888;">Please check your network and try again</p>
+        <button class="btn" onclick="window.location.reload();">Retry</button>
+    </div>
+</body>
+</html>
