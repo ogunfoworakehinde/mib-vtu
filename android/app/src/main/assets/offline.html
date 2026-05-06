@@ -14,54 +14,149 @@
             justify-content: center;
             min-height: 100vh;
             padding: 20px;
+            transition: background 0.3s;
         }
         .container {
             background: #ffffff;
-            border-radius: 16px;
-            padding: 2.5rem 2rem;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+            border-radius: 20px;
+            padding: 3rem 2rem;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.1);
             text-align: center;
             max-width: 400px;
             width: 100%;
         }
-        .logo {
-            width: 80px;
-            height: auto;
-            margin-bottom: 1.5rem;
+
+        /* --- Animated illustration --- */
+        .illustration {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 2rem;
         }
+        .pulse-ring {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            border-radius: 50%;
+            border: 3px solid #0000CC22;
+            animation: pulse 2.5s ease-out infinite;
+        }
+        .pulse-ring:nth-child(2) {
+            animation-delay: 0.5s;
+        }
+        .pulse-ring:nth-child(3) {
+            animation-delay: 1s;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.8); opacity: 0.9; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        .logo-wrapper {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            z-index: 2;
+            animation: breathe 2s ease-in-out infinite;
+        }
+        @keyframes breathe {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+        }
+        .logo-wrapper img {
+            width: 60px;
+            height: auto;
+        }
+
+        /* --- Text --- */
         h3 {
             font-size: 1.2rem;
             color: #1a1a2e;
             margin-bottom: 0.5rem;
+            font-weight: 700;
         }
-        p {
-            color: #555;
-            margin-bottom: 2rem;
+        .status-text {
+            color: #666;
+            margin-bottom: 0.5rem;
             font-size: 0.95rem;
         }
+        .hint {
+            color: #999;
+            font-size: 0.85rem;
+            margin-bottom: 2rem;
+        }
+
+        /* --- Button --- */
         .btn {
             display: inline-block;
             background: #0000CC;
             color: white;
-            padding: 12px 25px;
-            border-radius: 10px;
+            padding: 14px 30px;
+            border-radius: 12px;
             text-decoration: none;
             font-weight: 600;
-            font-size: 15px;
+            font-size: 16px;
             border: none;
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: background 0.2s, transform 0.1s;
+            box-shadow: 0 6px 20px rgba(0,0,204,0.2);
         }
-        .btn:active { transform: scale(0.97); }
+        .btn:active {
+            transform: scale(0.97);
+            background: #0000aa;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <img src="logo.png" alt="Logo" class="logo">
+        <!-- Animated illustration with logo and pulsing rings -->
+        <div class="illustration">
+            <div class="pulse-ring"></div>
+            <div class="pulse-ring"></div>
+            <div class="pulse-ring"></div>
+            <div class="logo-wrapper">
+                <img src="logo.png" alt="MIB Logo">
+            </div>
+        </div>
+
         <h3>M I B GROUP LTD</h3>
-        <p>No Internet Connection</p>
-        <p style="color: #888;">Please check your network and try again</p>
-        <button class="btn" onclick="window.location.reload();">Retry</button>
+        <p class="status-text" id="statusMsg">No Internet Connection</p>
+        <p class="hint">Please check your network.<br>We’ll connect automatically once it’s back.</p>
+        
+        <button class="btn" id="retryBtn">Try Again</button>
     </div>
+
+    <script>
+        const LIVE_URL = "https://mib-vtu-production.up.railway.app";
+
+        function goOnline() {
+            // Redirect the WebView to the live URL
+            window.location.href = LIVE_URL;
+        }
+
+        // Retry button
+        document.getElementById('retryBtn').addEventListener('click', goOnline);
+
+        // Auto‑detect when internet returns
+        function checkOnline() {
+            if (navigator.onLine) {
+                document.getElementById('statusMsg').textContent = "Internet detected! Connecting…";
+                setTimeout(goOnline, 500);
+            }
+        }
+
+        // Listen for online event
+        window.addEventListener('online', checkOnline);
+
+        // Also poll every 3 seconds (for devices where 'online' event is slow)
+        setInterval(checkOnline, 3000);
+    </script>
 </body>
 </html>
