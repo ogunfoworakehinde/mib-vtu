@@ -28,9 +28,9 @@ public class MainActivity extends Activity {
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
-        settings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);  // use cache first
-        settings.setAppCacheEnabled(true);
-        settings.setAppCachePath(getApplicationContext().getCacheDir().getAbsolutePath());
+        settings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);  // cache first, then network
+        // settings.setAppCacheEnabled(true);  // REMOVED – not supported
+        // settings.setAppCachePath(getApplicationContext().getCacheDir().getAbsolutePath());  // REMOVED
         settings.setAllowFileAccess(true);
         settings.setSaveFormData(true);
 
@@ -52,7 +52,7 @@ public class MainActivity extends Activity {
             }
         });
 
-        // Network callback (keep existing)
+        // Network callback – existing code (unchanged)
         connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkRequest networkRequest = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
