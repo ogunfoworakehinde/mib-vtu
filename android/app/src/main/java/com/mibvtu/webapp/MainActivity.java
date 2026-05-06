@@ -13,7 +13,7 @@ public class MainActivity extends Activity {
         WebView webView = new WebView(this);
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
-        webView.loadUrl("https://your-deployed-app.com");  // <-- CHANGE THIS URL
+        webView.loadUrl("https://mib-vtu-production.up.railway.app");
         webView.setWebViewClient(new WebViewClient());
         setContentView(webView);
     }
