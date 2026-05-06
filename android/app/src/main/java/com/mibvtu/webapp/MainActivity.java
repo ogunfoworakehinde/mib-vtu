@@ -25,15 +25,20 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         webView = new WebView(this);
-        webView.getSettings().setJavaScriptEnabled(true);
-        webView.getSettings().setDomStorageEnabled(true);
+        WebSettings settings = webView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);  // use cache first
+        settings.setAppCacheEnabled(true);
+        settings.setAppCachePath(getApplicationContext().getCacheDir().getAbsolutePath());
+        settings.setAllowFileAccess(true);
+        settings.setSaveFormData(true);
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onReceivedError(WebView view, int errorCode,
                                         String description, String failingUrl) {
-                // Only show offline page if the live URL fails
-                if (failingUrl.startsWith("https://mib-vtu")) {
+                if (failingUrl != null && failingUrl.startsWith("https://mib-vtu")) {
                     view.loadUrl(OFFLINE_PAGE);
                     isOfflinePageDisplayed = true;
                 }
@@ -41,14 +46,13 @@ public class MainActivity extends Activity {
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                // If we're back on the live site, reset the flag
                 if (url.equals(LIVE_URL)) {
                     isOfflinePageDisplayed = false;
                 }
             }
         });
 
-        // Register network callback
+        // Network callback (keep existing)
         connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkRequest networkRequest = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
@@ -57,7 +61,6 @@ public class MainActivity extends Activity {
         networkCallback = new ConnectivityManager.NetworkCallback() {
             @Override
             public void onLost(Network network) {
-                // Internet gone – show offline page
                 webView.post(() -> {
                     webView.loadUrl(OFFLINE_PAGE);
                     isOfflinePageDisplayed = true;
@@ -66,7 +69,6 @@ public class MainActivity extends Activity {
 
             @Override
             public void onAvailable(Network network) {
-                // Internet back – reload live site if we were offline
                 webView.post(() -> {
                     if (isOfflinePageDisplayed) {
                         webView.loadUrl(LIVE_URL);
@@ -78,7 +80,6 @@ public class MainActivity extends Activity {
 
         connectivityManager.registerNetworkCallback(networkRequest, networkCallback);
 
-        // Load live site initially
         webView.loadUrl(LIVE_URL);
         setContentView(webView);
     }
