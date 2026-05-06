@@ -17,8 +17,10 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Bootstrap any application services.
      */
-    public function boot(): void
-    {
-        //
+    public function boot()
+{
+    if (env('FORCE_HTTPS', false) || request()->isSecure()) {
+        \URL::forceScheme('https');
     }
+}
 }

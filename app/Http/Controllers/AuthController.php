@@ -14,7 +14,7 @@ class AuthController extends Controller {
             ]);
             if (Auth::attempt($credentials)) {
                 $request->session()->regenerate();
-                return response()->json(['redirect' => route('dashboard')]);
+                return response()->json(['redirect' => '/']);
             }
             return response()->json(['error' => 'Invalid credentials'], 401);
         }
