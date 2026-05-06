@@ -150,11 +150,10 @@
         </div>
 
         <!-- Logo area -->
-<div class="logo-area">
-    <img src="{{ asset('images/logo.png') }}" alt="Logo" style="height: 60px; width: auto;" class="mb-2 rounded">
-    <h4>{{ config('app.name', 'MIB GROUP') }}</h4>
-</div>
-
+        <div class="logo-area">
+            <i class="bi bi-wallet2 logo-icon"></i>
+            <h4>{{ config('app.name', 'MIB GROUP') }}</h4>
+        </div>
 
         @yield('content')
     </div>
@@ -193,7 +192,6 @@
                 input.type = 'password';
                 icon.className = 'bi bi-eye-slash password-toggle';
             }
-            // Keep the absolute positioning
         }
     </script>
     @stack('scripts')

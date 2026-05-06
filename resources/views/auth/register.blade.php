@@ -5,7 +5,7 @@
 <h5 class="text-center mb-3 fw-semibold">Create Account</h5>
 <p class="text-center text-muted mb-4">Join {{ config('app.name') }} today.</p>
 
-<form id="regForm">
+<form id="regForm" method="POST" action="{{ route('register') }}">
     <input type="hidden" name="_token" value="{{ csrf_token() }}">
     
     <div class="mb-3">
@@ -59,8 +59,7 @@ document.getElementById('regForm').addEventListener('submit', function(e){
             document.getElementById('regMsg').innerHTML = '<div class="alert alert-success py-2">' + data.message + '</div>';
         } else if(data.error) {
             document.getElementById('regMsg').innerHTML = '<div class="alert alert-danger py-2">' + data.error + '</div>';
-        } else {
-            // Validation errors (Laravel may return errors as array)
+        } else if(data.errors) {
             let errors = '';
             for(let key in data.errors) {
                 errors += data.errors[key].join('<br>') + '<br>';
@@ -69,7 +68,8 @@ document.getElementById('regForm').addEventListener('submit', function(e){
         }
     })
     .catch(() => {
-        document.getElementById('regMsg').innerHTML = '<div class="alert alert-danger py-2">Network error. Try again.</div>';
+        // Fallback to normal form submission if AJAX fails
+        document.getElementById('regForm').submit();
     });
 });
 </script>

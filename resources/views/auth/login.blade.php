@@ -5,7 +5,7 @@
 <h5 class="text-center mb-3 fw-semibold">Sign In</h5>
 <p class="text-center text-muted mb-4">Welcome back! Enter your details.</p>
 
-<form id="loginForm">
+<form id="loginForm" method="POST" action="{{ route('login') }}">
     <input type="hidden" name="_token" value="{{ csrf_token() }}">
     
     <div class="mb-3">
@@ -53,11 +53,12 @@ document.getElementById('loginForm').addEventListener('submit', function(e){
         if(data.redirect) {
             window.location.href = data.redirect;
         } else {
-            document.getElementById('loginMsg').innerHTML = '<div class="alert alert-danger py-2">' + data.error + '</div>';
+            document.getElementById('loginMsg').innerHTML = '<div class="alert alert-danger py-2">' + (data.error || data.message) + '</div>';
         }
     })
     .catch(() => {
-        document.getElementById('loginMsg').innerHTML = '<div class="alert alert-danger py-2">Network error. Try again.</div>';
+        // If AJAX fails, the form will be submitted normally because we have action and method attributes
+        document.getElementById('loginForm').submit();
     });
 });
 </script>
