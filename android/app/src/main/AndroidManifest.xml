@@ -3,6 +3,7 @@
     package="com.mibvtu.webapp">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:allowBackup="true"
@@ -11,7 +12,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.Light.NoActionBar">
 
-        <!-- Splash screen (launcher) -->
         <activity
             android:name=".SplashActivity"
             android:exported="true"
@@ -22,7 +22,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Main WebView activity -->
         <activity
             android:name=".MainActivity"
             android:exported="false" />
