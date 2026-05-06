@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.webkit.WebResourceRequest;
 
 public class MainActivity extends Activity {
     private WebView webView;
@@ -21,14 +20,9 @@ public class MainActivity extends Activity {
         
         webView.setWebViewClient(new WebViewClient() {
             @Override
-            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-                // Load the local offline page
-                view.loadUrl("file:///android_asset/offline.html");
-            }
-
-            @Override
-            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                // For newer Android versions
+            public void onReceivedError(WebView view, int errorCode,
+                                        String description, String failingUrl) {
+                // This method is called on all Android versions
                 view.loadUrl("file:///android_asset/offline.html");
             }
         });
