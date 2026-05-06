@@ -1,5 +1,6 @@
 {
-  "php": {
-    "version": "8.3"
-  }
+    "php": {
+        "version": "8.3",
+        "extensions": ["pdo", "pdo_mysql", "mysqlnd"]
+    }
 }
