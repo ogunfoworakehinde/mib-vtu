@@ -7,17 +7,13 @@ import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.os.Bundle;
-import android.os.Handler;
-import android.view.View;
 import android.webkit.CookieManager;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.RelativeLayout;
 
 public class MainActivity extends Activity {
     private WebView webView;
-    private View splashView;
     private ConnectivityManager connectivityManager;
     private ConnectivityManager.NetworkCallback networkCallback;
 
@@ -29,19 +25,9 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Allow cookies for session handling
         CookieManager.getInstance().setAcceptCookie(true);
 
-        // Container for splash + WebView
-        RelativeLayout root = new RelativeLayout(this);
-
-        // Splash screen (your existing layout)
-        splashView = getLayoutInflater().inflate(R.layout.activity_splash, root, false);
-        root.addView(splashView);
-
-        // WebView
         webView = new WebView(this);
-        webView.setVisibility(View.INVISIBLE);
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
@@ -49,34 +35,32 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(true);
         settings.setSaveFormData(true);
 
+        // ---------- CRITICAL for proper centering & scaling ----------
+        settings.setUseWideViewPort(true);
+        settings.setLoadWithOverviewMode(true);
+        // -------------------------------------------------------------
+
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onReceivedError(WebView view, int errorCode,
                                         String description, String failingUrl) {
                 if (failingUrl != null && failingUrl.startsWith("https://mib-vtu")) {
-                    webView.loadUrl(OFFLINE_PAGE);
+                    view.loadUrl(OFFLINE_PAGE);
                     isOfflinePageDisplayed = true;
-                    splashView.setVisibility(View.GONE);
-                    webView.setVisibility(View.VISIBLE);
                 }
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                if (url.equals(LIVE_URL) || url.equals(OFFLINE_PAGE)) {
-                    splashView.setVisibility(View.GONE);
-                    webView.setVisibility(View.VISIBLE);
-                    if (url.equals(LIVE_URL)) {
-                        isOfflinePageDisplayed = false;
-                    }
+                if (url.equals(LIVE_URL)) {
+                    isOfflinePageDisplayed = false;
                 }
             }
         });
 
-        root.addView(webView);
-        setContentView(root);
+        setContentView(webView);
 
-        // Network callback (offline ↔ online)
+        // Network callback (unchanged)
         connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkRequest networkRequest = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
@@ -104,16 +88,7 @@ public class MainActivity extends Activity {
 
         connectivityManager.registerNetworkCallback(networkRequest, networkCallback);
 
-        // Start loading the actual site
         webView.loadUrl(LIVE_URL);
-
-        // Fallback: if page fails to load (e.g. timeout), show WebView after 5s
-        new Handler().postDelayed(() -> {
-            if (webView.getVisibility() != View.VISIBLE) {
-                splashView.setVisibility(View.GONE);
-                webView.setVisibility(View.VISIBLE);
-            }
-        }, 5000);
     }
 
     @Override
