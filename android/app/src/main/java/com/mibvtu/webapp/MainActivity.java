@@ -29,14 +29,13 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Accept cookies for sessions
+        // Allow cookies for session handling
         CookieManager.getInstance().setAcceptCookie(true);
-        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
 
-        // Create container
+        // Container for splash + WebView
         RelativeLayout root = new RelativeLayout(this);
 
-        // Splash layout
+        // Splash screen (your existing layout)
         splashView = getLayoutInflater().inflate(R.layout.activity_splash, root, false);
         root.addView(splashView);
 
@@ -46,7 +45,7 @@ public class MainActivity extends Activity {
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT);   // <-- use normal caching (respects headers)
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setAllowFileAccess(true);
         settings.setSaveFormData(true);
 
@@ -77,7 +76,7 @@ public class MainActivity extends Activity {
         root.addView(webView);
         setContentView(root);
 
-        // Network callback
+        // Network callback (offline ↔ online)
         connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkRequest networkRequest = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
@@ -105,10 +104,10 @@ public class MainActivity extends Activity {
 
         connectivityManager.registerNetworkCallback(networkRequest, networkCallback);
 
-        // Start loading
+        // Start loading the actual site
         webView.loadUrl(LIVE_URL);
 
-        // Fallback after 5 seconds
+        // Fallback: if page fails to load (e.g. timeout), show WebView after 5s
         new Handler().postDelayed(() -> {
             if (webView.getVisibility() != View.VISIBLE) {
                 splashView.setVisibility(View.GONE);
