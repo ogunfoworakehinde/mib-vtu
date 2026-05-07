@@ -9,6 +9,7 @@ import android.net.NetworkRequest;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.View;
+import android.webkit.CookieManager;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -28,21 +29,26 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Create a container that holds both the splash and the WebView
+        // Accept cookies for sessions
+        CookieManager.getInstance().setAcceptCookie(true);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
+
+        // Create container
         RelativeLayout root = new RelativeLayout(this);
-        
-        // Splash screen (the same XML layout you already have)
+
+        // Splash layout
         splashView = getLayoutInflater().inflate(R.layout.activity_splash, root, false);
         root.addView(splashView);
 
-        // WebView (hidden until page loads)
+        // WebView
         webView = new WebView(this);
         webView.setVisibility(View.INVISIBLE);
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
-        settings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);   // <-- use normal caching (respects headers)
         settings.setAllowFileAccess(true);
+        settings.setSaveFormData(true);
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -51,7 +57,6 @@ public class MainActivity extends Activity {
                 if (failingUrl != null && failingUrl.startsWith("https://mib-vtu")) {
                     webView.loadUrl(OFFLINE_PAGE);
                     isOfflinePageDisplayed = true;
-                    // When offline page is displayed, remove splash
                     splashView.setVisibility(View.GONE);
                     webView.setVisibility(View.VISIBLE);
                 }
@@ -59,7 +64,6 @@ public class MainActivity extends Activity {
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                // Once the live site (or offline page) finishes loading, hide splash
                 if (url.equals(LIVE_URL) || url.equals(OFFLINE_PAGE)) {
                     splashView.setVisibility(View.GONE);
                     webView.setVisibility(View.VISIBLE);
@@ -73,7 +77,7 @@ public class MainActivity extends Activity {
         root.addView(webView);
         setContentView(root);
 
-        // Network callback (unchanged logic)
+        // Network callback
         connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkRequest networkRequest = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
@@ -101,10 +105,10 @@ public class MainActivity extends Activity {
 
         connectivityManager.registerNetworkCallback(networkRequest, networkCallback);
 
-        // Start loading the live site
+        // Start loading
         webView.loadUrl(LIVE_URL);
-        
-        // Fallback: if the page doesn't load within 5 seconds, show splash anyway (maybe offline)
+
+        // Fallback after 5 seconds
         new Handler().postDelayed(() -> {
             if (webView.getVisibility() != View.VISIBLE) {
                 splashView.setVisibility(View.GONE);
