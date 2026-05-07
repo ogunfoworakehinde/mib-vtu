@@ -7,12 +7,16 @@ import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.os.Bundle;
+import android.os.Handler;
+import android.view.View;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.RelativeLayout;
 
 public class MainActivity extends Activity {
     private WebView webView;
+    private View splashView;
     private ConnectivityManager connectivityManager;
     private ConnectivityManager.NetworkCallback networkCallback;
 
@@ -24,35 +28,52 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Create a container that holds both the splash and the WebView
+        RelativeLayout root = new RelativeLayout(this);
+        
+        // Splash screen (the same XML layout you already have)
+        splashView = getLayoutInflater().inflate(R.layout.activity_splash, root, false);
+        root.addView(splashView);
+
+        // WebView (hidden until page loads)
         webView = new WebView(this);
+        webView.setVisibility(View.INVISIBLE);
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
-        settings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);  // cache first, then network
-        // settings.setAppCacheEnabled(true);  // REMOVED – not supported
-        // settings.setAppCachePath(getApplicationContext().getCacheDir().getAbsolutePath());  // REMOVED
+        settings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
         settings.setAllowFileAccess(true);
-        settings.setSaveFormData(true);
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onReceivedError(WebView view, int errorCode,
                                         String description, String failingUrl) {
                 if (failingUrl != null && failingUrl.startsWith("https://mib-vtu")) {
-                    view.loadUrl(OFFLINE_PAGE);
+                    webView.loadUrl(OFFLINE_PAGE);
                     isOfflinePageDisplayed = true;
+                    // When offline page is displayed, remove splash
+                    splashView.setVisibility(View.GONE);
+                    webView.setVisibility(View.VISIBLE);
                 }
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                if (url.equals(LIVE_URL)) {
-                    isOfflinePageDisplayed = false;
+                // Once the live site (or offline page) finishes loading, hide splash
+                if (url.equals(LIVE_URL) || url.equals(OFFLINE_PAGE)) {
+                    splashView.setVisibility(View.GONE);
+                    webView.setVisibility(View.VISIBLE);
+                    if (url.equals(LIVE_URL)) {
+                        isOfflinePageDisplayed = false;
+                    }
                 }
             }
         });
 
-        // Network callback – existing code (unchanged)
+        root.addView(webView);
+        setContentView(root);
+
+        // Network callback (unchanged logic)
         connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkRequest networkRequest = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
@@ -80,8 +101,16 @@ public class MainActivity extends Activity {
 
         connectivityManager.registerNetworkCallback(networkRequest, networkCallback);
 
+        // Start loading the live site
         webView.loadUrl(LIVE_URL);
-        setContentView(webView);
+        
+        // Fallback: if the page doesn't load within 5 seconds, show splash anyway (maybe offline)
+        new Handler().postDelayed(() -> {
+            if (webView.getVisibility() != View.VISIBLE) {
+                splashView.setVisibility(View.GONE);
+                webView.setVisibility(View.VISIBLE);
+            }
+        }, 5000);
     }
 
     @Override
