@@ -78,7 +78,7 @@
   </div></div>
 </div>
 
-{{-- ========== DATA MODAL (FULLSCREEN BELOW HEADER + NETWORK LOCK + AUTOCOMPLETE) ========== --}}
+{{-- ========== DATA MODAL (FULLSCREEN BELOW HEADER + MTN COMBINE + CATEGORIES) ========== --}}
 <div class="modal fade" id="dataModal" tabindex="-1">
   <div class="modal-dialog modal-fullscreen-below-header">
     <div class="modal-content border-0 rounded-4 shadow-lg p-3" style="border-radius: 16px!important;">
@@ -103,8 +103,8 @@
 
         <div id="plansContainer" class="d-none">
           <label class="form-label fw-semibold">Select Plan</label>
-          <div id="planCardsContainer" class="row g-2">
-            <!-- Dynamically filled -->
+          <div id="planCategoriesContainer">
+            <!-- Categories dynamically filled -->
           </div>
         </div>
 
@@ -116,7 +116,7 @@
   </div>
 </div>
 
-{{-- ========== AIRTIME MODAL (FULLSCREEN BELOW HEADER + NETWORK LOCK + AUTOCOMPLETE) ========== --}}
+{{-- ========== AIRTIME MODAL (unchanged) ========== --}}
 <div class="modal fade" id="airtimeModal" tabindex="-1">
   <div class="modal-dialog modal-fullscreen-below-header">
     <div class="modal-content border-0 rounded-4 shadow-lg p-3" style="border-radius: 16px!important;">
@@ -160,9 +160,9 @@
   </div></div>
 </div>
 
-{{-- ========== CUSTOM CSS FOR MODALS & NETWORK CARDS ========== --}}
+{{-- ========== CUSTOM CSS ========== --}}
 <style>
-    /* Fixed modals that sit below the header */
+    /* Fixed modals below header */
     .modal-fullscreen-below-header {
         position: fixed;
         top: var(--header-height, 56px);
@@ -250,6 +250,15 @@
         font-size: 12px;
         color: var(--text-muted);
     }
+    .category-header {
+        font-weight: 700;
+        font-size: 15px;
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+        color: var(--primary);
+        border-bottom: 1px solid var(--primary);
+        padding-bottom: 4px;
+    }
 </style>
 
 {{-- ========== SCRIPTS ========== --}}
@@ -310,11 +319,8 @@ function getRecentNumbers() {
 
 function saveRecentNumber(phone) {
     let recent = getRecentNumbers();
-    // Remove duplicate if exists
     recent = recent.filter(p => p !== phone);
-    // Add to beginning
     recent.unshift(phone);
-    // Keep only MAX_RECENT
     recent = recent.slice(0, MAX_RECENT);
     localStorage.setItem('vtu_recent_phones', JSON.stringify(recent));
     updatePhoneLists();
@@ -333,7 +339,6 @@ function updatePhoneLists() {
     });
 }
 
-// Initialize recent lists on load
 updatePhoneLists();
 
 // ---------- NETWORK HELPERS ----------
@@ -370,15 +375,48 @@ function detectNetwork(phoneNumber) {
     return null;
 }
 
-let selectedDataNetwork = null;
+let selectedDataNetwork = null;   // for MTN this will be the combined identifier 'mtn'
 let selectedDataPlan = null;
 let selectedAirtimeNetwork = null;
-
-// Lock states: true when phone is valid -> network locked
 let dataNetworkLocked = false;
 let airtimeNetworkLocked = false;
 
-// ---------- LOAD DATA NETWORKS ----------
+// ---------- CATEGORIZE PLAN ----------
+function categorizePlan(label) {
+    const str = label.toLowerCase();
+    // Match patterns like "1 day", "2 days", "3 day", "7 days", "14 days", etc.
+    const daysMatch = str.match(/(\d+)\s*days?/i);
+    const weeksMatch = str.match(/(\d+)\s*weeks?/i);
+    const monthsMatch = str.match(/(\d+)\s*months?/i);
+    const yearMatch = str.match(/(\d+)\s*years?/i);
+    const dayWordMatch = str.match(/(\d+)\s*day\b/i);
+
+    if (yearMatch) return 'Yearly';
+    if (monthsMatch) {
+        const m = parseInt(monthsMatch[1]);
+        return m >= 2 ? 'Bi-Monthly' : 'Monthly';
+    }
+    if (weeksMatch) return 'Weekly';
+    if (daysMatch) {
+        const d = parseInt(daysMatch[1]);
+        if (d <= 3) return 'Daily';
+        if (d <= 7) return 'Weekly';
+        if (d <= 14) return 'Weekly';
+        return 'Monthly';
+    }
+    if (dayWordMatch) {
+        const d = parseInt(dayWordMatch[1]);
+        if (d <= 3) return 'Daily';
+        return 'Monthly';
+    }
+    // Fallback based on keywords
+    if (str.includes('month')) return 'Monthly';
+    if (str.includes('week')) return 'Weekly';
+    if (str.includes('year')) return 'Yearly';
+    return 'Other';
+}
+
+// ---------- LOAD DATA NETWORKS (MTN combined) ----------
 function loadDataNetworks() {
     fetch('{{ route("data.networks") }}')
     .then(r => r.json())
@@ -388,14 +426,37 @@ function loadDataNetworks() {
             container.innerHTML = '<div class="col-12 text-muted">No networks available</div>';
             return;
         }
+        // Group MTN entries
+        const mtnItems = data.filter(n => getShortCode(n.name, n.identifier) === 'mtn');
+        const nonMtnItems = data.filter(n => getShortCode(n.name, n.identifier) !== 'mtn');
+        const networksToShow = [];
+        // Combine MTN into one card if more than one MTN entry
+        if (mtnItems.length > 0) {
+            networksToShow.push({
+                name: 'MTN',
+                shortCode: 'mtn',
+                combined: true,
+                identifiers: mtnItems.map(n => n.identifier)  // e.g., ['mtn_gifting_data', 'mtn_data_share']
+            });
+        }
+        // Add all other networks
+        nonMtnItems.forEach(n => {
+            networksToShow.push({
+                name: n.name,
+                identifier: n.identifier,
+                shortCode: getShortCode(n.name, n.identifier),
+                combined: false
+            });
+        });
+
         container.innerHTML = '';
-        data.forEach(n => {
-            const shortCode = getShortCode(n.name, n.identifier);
-            const iconClass = networkIcons[shortCode] || 'bi bi-phone-fill text-secondary';
+        networksToShow.forEach(n => {
+            const iconClass = networkIcons[n.shortCode] || 'bi bi-phone-fill text-secondary';
             const card = document.createElement('div');
             card.className = 'col-4 col-md-3';
+            const uniqueId = n.combined ? 'mtn' : n.identifier;
             card.innerHTML = `
-                <div class="network-card" data-network="${n.identifier}" data-shortcode="${shortCode}" data-name="${n.name}">
+                <div class="network-card" data-network="${uniqueId}" data-shortcode="${n.shortCode}" ${n.combined ? 'data-combined="true"' : ''} data-identifiers='${JSON.stringify(n.identifiers || [n.identifier])}'>
                     <i class="${iconClass} fs-3"></i>
                     <div class="name">${n.name}</div>
                 </div>
@@ -409,7 +470,13 @@ function loadDataNetworks() {
                 this.classList.add('selected');
                 selectedDataNetwork = this.dataset.network;
                 document.getElementById('buyDataBtn').disabled = true;
-                loadDataPlans(selectedDataNetwork);
+                // Load plans – if MTN combined, fetch and merge both
+                if (this.dataset.combined === 'true') {
+                    const identifiers = JSON.parse(this.dataset.identifiers);
+                    loadCombinedDataPlans(identifiers);
+                } else {
+                    loadDataPlans(this.dataset.network);
+                }
             };
             card.querySelector('.network-card').addEventListener('click', clickHandler);
             container.appendChild(card);
@@ -417,22 +484,81 @@ function loadDataNetworks() {
     });
 }
 
-// ---------- LOAD DATA PLANS ----------
+// ---------- LOAD DATA PLANS (single network) ----------
 function loadDataPlans(networkId) {
     const plansContainer = document.getElementById('plansContainer');
-    const planCards = document.getElementById('planCardsContainer');
-    planCards.innerHTML = '<div class="col-12 text-center py-3"><div class="spinner-border spinner-border-sm text-primary" role="status"></div></div>';
+    const planCategories = document.getElementById('planCategoriesContainer');
+    planCategories.innerHTML = '<div class="col-12 text-center py-3"><div class="spinner-border spinner-border-sm text-primary" role="status"></div></div>';
     plansContainer.classList.remove('d-none');
 
     fetch(`/data/plans?network_id=${networkId}`)
     .then(r => r.json())
-    .then(data => {
-        planCards.innerHTML = '';
-        if (!Array.isArray(data) || data.length === 0) {
-            planCards.innerHTML = '<div class="col-12 text-muted">No plans available for this network</div>';
-            return;
-        }
-        data.forEach(p => {
+    .then(plans => {
+        renderPlans(plans);
+    });
+}
+
+// ---------- LOAD COMBINED MTN PLANS ----------
+function loadCombinedDataPlans(identifiers) {
+    const plansContainer = document.getElementById('plansContainer');
+    const planCategories = document.getElementById('planCategoriesContainer');
+    planCategories.innerHTML = '<div class="col-12 text-center py-3"><div class="spinner-border spinner-border-sm text-primary" role="status"></div></div>';
+    plansContainer.classList.remove('d-none');
+
+    const promises = identifiers.map(id =>
+        fetch(`/data/plans?network_id=${id}`).then(r => r.json())
+    );
+    Promise.all(promises)
+    .then(results => {
+        // merge all plans, remove duplicate plan codes
+        let merged = [];
+        const seenCodes = new Set();
+        results.forEach(arr => {
+            if (Array.isArray(arr)) {
+                arr.forEach(p => {
+                    if (!seenCodes.has(p.code)) {
+                        seenCodes.add(p.code);
+                        merged.push(p);
+                    }
+                });
+            }
+        });
+        renderPlans(merged);
+    })
+    .catch(() => {
+        planCategories.innerHTML = '<div class="col-12 text-muted">Failed to load plans.</div>';
+    });
+}
+
+// ---------- RENDER PLANS WITH CATEGORIES ----------
+function renderPlans(plans) {
+    const planCategories = document.getElementById('planCategoriesContainer');
+    planCategories.innerHTML = '';
+    if (!Array.isArray(plans) || plans.length === 0) {
+        planCategories.innerHTML = '<div class="col-12 text-muted">No plans available for this network</div>';
+        return;
+    }
+
+    // Group by category
+    const categories = {};
+    plans.forEach(p => {
+        const cat = categorizePlan(p.name);
+        if (!categories[cat]) categories[cat] = [];
+        categories[cat].push(p);
+    });
+
+    // Order categories
+    const catOrder = ['Daily', 'Weekly', 'Monthly', 'Bi-Monthly', 'Yearly', 'Other'];
+    const sortedCats = Object.keys(categories).sort((a, b) => catOrder.indexOf(a) - catOrder.indexOf(b));
+
+    sortedCats.forEach(cat => {
+        const catDiv = document.createElement('div');
+        catDiv.innerHTML = `<div class="category-header">${cat}</div>`;
+        planCategories.appendChild(catDiv);
+
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'row g-2';
+        categories[cat].forEach(p => {
             const card = document.createElement('div');
             card.className = 'col-6 col-md-4';
             card.innerHTML = `
@@ -442,13 +568,14 @@ function loadDataPlans(networkId) {
                 </div>
             `;
             card.querySelector('.plan-card').addEventListener('click', function() {
-                document.querySelectorAll('#planCardsContainer .plan-card').forEach(el => el.classList.remove('selected'));
+                document.querySelectorAll('#planCategoriesContainer .plan-card').forEach(el => el.classList.remove('selected'));
                 this.classList.add('selected');
                 selectedDataPlan = { code: this.dataset.code, price: this.dataset.price };
                 document.getElementById('buyDataBtn').disabled = false;
             });
-            planCards.appendChild(card);
+            rowDiv.appendChild(card);
         });
+        planCategories.appendChild(rowDiv);
     });
 }
 
@@ -489,8 +616,7 @@ function loadAirtimeNetworks() {
     });
 }
 
-// ---------- AUTO-DETECT AND LOCK MECHANISM ----------
-
+// ---------- AUTO-DETECT AND LOCK (unchanged) ----------
 // Data modal auto-detect
 document.getElementById('dataPhone').addEventListener('input', function() {
     const phone = this.value.trim();
@@ -501,26 +627,29 @@ document.getElementById('dataPhone').addEventListener('input', function() {
     if (shortCode && phone.length >= 10) {
         badge.classList.remove('d-none');
         text.textContent = `Detected: ${shortCode.toUpperCase()}`;
-        // Lock network and auto-select
         dataNetworkLocked = true;
-        document.querySelectorAll('#networkCardsContainer .network-card').forEach(card => {
-            card.classList.remove('selected');
-            card.classList.add('locked');
+        const cards = document.querySelectorAll('#networkCardsContainer .network-card');
+        cards.forEach(card => {
+            card.classList.remove('selected', 'locked');
             if (card.dataset.shortcode === shortCode) {
                 card.classList.add('selected');
                 card.classList.remove('locked');
                 selectedDataNetwork = card.dataset.network;
-                loadDataPlans(selectedDataNetwork);
+                // Trigger plan loading
+                if (card.dataset.combined === 'true') {
+                    const identifiers = JSON.parse(card.dataset.identifiers);
+                    loadCombinedDataPlans(identifiers);
+                } else {
+                    loadDataPlans(card.dataset.network);
+                }
+            } else {
+                card.classList.add('locked');
             }
         });
     } else {
-        // No valid detection -> unlock
         badge.classList.add('d-none');
         dataNetworkLocked = false;
-        // Remove locked styling
-        document.querySelectorAll('#networkCardsContainer .network-card').forEach(card => card.classList.remove('locked'));
-        // Deselect all
-        document.querySelectorAll('#networkCardsContainer .network-card').forEach(card => card.classList.remove('selected'));
+        document.querySelectorAll('#networkCardsContainer .network-card').forEach(card => card.classList.remove('locked', 'selected'));
         selectedDataNetwork = null;
         document.getElementById('plansContainer').classList.add('d-none');
         document.getElementById('buyDataBtn').disabled = true;
@@ -538,27 +667,28 @@ document.getElementById('airtimePhone').addEventListener('input', function() {
         badge.classList.remove('d-none');
         text.textContent = `Detected: ${shortCode.toUpperCase()}`;
         airtimeNetworkLocked = true;
-        document.querySelectorAll('#airtimeNetworkCards .network-card').forEach(card => {
-            card.classList.remove('selected');
-            card.classList.add('locked');
+        const cards = document.querySelectorAll('#airtimeNetworkCards .network-card');
+        cards.forEach(card => {
+            card.classList.remove('selected', 'locked');
             if (card.dataset.network === shortCode) {
                 card.classList.add('selected');
                 card.classList.remove('locked');
                 selectedAirtimeNetwork = shortCode;
                 document.getElementById('buyAirtimeBtn').disabled = false;
+            } else {
+                card.classList.add('locked');
             }
         });
     } else {
         badge.classList.add('d-none');
         airtimeNetworkLocked = false;
-        document.querySelectorAll('#airtimeNetworkCards .network-card').forEach(card => card.classList.remove('locked'));
-        document.querySelectorAll('#airtimeNetworkCards .network-card').forEach(card => card.classList.remove('selected'));
+        document.querySelectorAll('#airtimeNetworkCards .network-card').forEach(card => card.classList.remove('locked', 'selected'));
         selectedAirtimeNetwork = null;
         document.getElementById('buyAirtimeBtn').disabled = true;
     }
 });
 
-// ---------- BUY DATA ----------
+// ---------- BUY DATA (unchanged) ----------
 document.getElementById('buyDataBtn').addEventListener('click', () => {
     if (!selectedDataNetwork || !selectedDataPlan) return showToast('Select network and plan', 'warning');
     const phone = document.getElementById('dataPhone').value.trim();
@@ -576,7 +706,7 @@ document.getElementById('buyDataBtn').addEventListener('click', () => {
     .then(r => r.json())
     .then(d => {
         if(d.success) {
-            saveRecentNumber(phone); // Save successful number
+            saveRecentNumber(phone);
             showToast(d.message || 'Data purchased', 'success');
             setTimeout(() => location.reload(), 1500);
         } else {
@@ -590,7 +720,7 @@ document.getElementById('buyDataBtn').addEventListener('click', () => {
     });
 });
 
-// ---------- BUY AIRTIME ----------
+// ---------- BUY AIRTIME (unchanged) ----------
 document.getElementById('buyAirtimeBtn').addEventListener('click', () => {
     if (!selectedAirtimeNetwork) return showToast('Select a network', 'warning');
     const phone = document.getElementById('airtimePhone').value.trim();
@@ -610,7 +740,7 @@ document.getElementById('buyAirtimeBtn').addEventListener('click', () => {
     .then(r => r.json())
     .then(d => {
         if(d.success) {
-            saveRecentNumber(phone); // Save successful number
+            saveRecentNumber(phone);
             showToast(d.message || 'Airtime sent', 'success');
             setTimeout(() => location.reload(), 1500);
         } else {
@@ -624,7 +754,7 @@ document.getElementById('buyAirtimeBtn').addEventListener('click', () => {
     });
 });
 
-// ---------- TRANSACTION RECEIPT ----------
+// ---------- TRANSACTION RECEIPT (unchanged) ----------
 async function viewTransaction(id) {
     document.getElementById('receiptContent').innerHTML = 'Loading...';
     const modal = new bootstrap.Modal(document.getElementById('receiptModal'));
