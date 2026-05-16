@@ -52,11 +52,11 @@ class DataController extends Controller {
 
         $reference = 'DT-'.Str::random(16);
         $buy = $sv->buyData([
-            'network'   => $request->network,
-            'plan_code' => $request->plan_code,
-            'phone'     => $request->phone,
-            'reference' => $reference
-        ]);
+          'network'       => $request->network,
+          'plan_code'     => $request->plan_code,
+          'mobile_number' => $request->phone,
+          'reference'     => $reference
+           ]);
 
         if (!$buy || !is_array($buy)) {
             return response()->json(['error' => 'Peyflex service unavailable. Try again later.'], 502);

@@ -28,11 +28,11 @@ class AirtimeController extends Controller {
         $sv = new PeyflexService();
         $reference = 'AT-'.Str::random(16);
         $buy = $sv->buyAirtime([
-            'network'   => $request->network,
-            'phone'     => $request->phone,
-            'amount'    => $request->amount,
-            'reference' => $reference
-        ]);
+         'network'       => $request->network,
+         'mobile_number' => $request->phone,
+         'amount'        => $request->amount,
+         'reference'     => $reference
+          ]);
 
         if (!$buy || !is_array($buy)) {
             return response()->json(['error' => 'Peyflex service unavailable. Try again later.'], 502);
