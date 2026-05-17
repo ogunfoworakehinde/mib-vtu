@@ -23,11 +23,23 @@ class DataController extends Controller {
             return response()->json([]);
         }
         $plans = $result['plans'];
-        $mapped = array_map(function($p) {
+        // get discount percentage for this network
+        $short = explode('_', $networkId)[0]; // e.g., 'mtn'
+        $discount = config("profit.data.{$short}", 0); // 0 if not set
+
+        $mapped = array_map(function($p) use ($discount) {
+            $cost = $p['amount']; // our cost from Peyflex
+            if ($discount > 0) {
+                // standard price = cost / (1 - discount/100)
+                $standardPrice = round($cost / (1 - $discount / 100), 2);
+            } else {
+                $standardPrice = $cost; // no discount, sell at cost
+            }
             return [
                 'code'  => $p['plan_code'],
                 'name'  => $p['label'],
-                'price' => $p['amount']
+                'price' => $standardPrice,   // displayed to user
+                'cost'  => $cost             // for profit calculation
             ];
         }, $plans);
         return response()->json($mapped);
@@ -42,13 +54,24 @@ class DataController extends Controller {
         $user = auth()->user();
         $sv = new PeyflexService();
 
+        // Fetch plan to get our cost and the standard price
         $result = $sv->getDataPlans($request->network);
         $plans = $result['plans'] ?? [];
         $plan = collect($plans)->firstWhere('plan_code', $request->plan_code);
         if (!$plan) return response()->json(['error'=>'Invalid plan'], 400);
-        $amount = $plan['amount'];
+        $cost = $plan['amount'];
 
-        if ($user->wallet_balance < $amount) return response()->json(['error'=>'Insufficient balance'], 402);
+        $short = explode('_', $request->network)[0];
+        $discount = config("profit.data.{$short}", 0);
+        if ($discount > 0) {
+            $standardPrice = round($cost / (1 - $discount / 100), 2);
+        } else {
+            $standardPrice = $cost;
+        }
+        $profit = $standardPrice - $cost;
+
+        if ($user->wallet_balance < $standardPrice)
+            return response()->json(['error'=>'Insufficient balance'], 402);
 
         $reference = 'DT-'.Str::random(16);
         $buy = $sv->buyData([
@@ -59,21 +82,13 @@ class DataController extends Controller {
         ]);
 
         if (!$buy || !is_array($buy)) {
-            return response()->json(['error' => 'Peyflex service unavailable. Try again later.'], 502);
+            return response()->json(['error' => 'Peyflex service unavailable.'], 502);
         }
 
-        // ----- Flexible success detection -----
-        $success = false;
-        if (isset($buy['status'])) {
-            $success = $buy['status'] === true || $buy['status'] === 'success';
-        }
-        if (!$success && isset($buy['message']) && stripos($buy['message'], 'success') !== false) {
-            $success = true;
-        }
-        // ------------------------------------
-
+        $success = isset($buy['status']) && ($buy['status'] === true || $buy['status'] === 'success');
         if ($success) {
-            (new WalletService())->debit($user, $amount, 'Data: '.$plan['label']);
+            // Debit the user the STANDARD price
+            (new WalletService())->debit($user, $standardPrice, 'Data: '.$plan['label']);
         }
 
         VtuTransaction::create([
@@ -84,18 +99,15 @@ class DataController extends Controller {
             'phone'        => $request->phone,
             'plan_name'    => $plan['label'],
             'plan_code'    => $plan['plan_code'],
-            'amount'       => $amount,
+            'amount'       => $standardPrice,   // what user paid
+            'profit'       => $profit,
             'api_response' => json_encode($buy),
             'status'       => $success ? 'success' : 'failed',
         ]);
 
-        $message = $success
-            ? 'Data purchased successfully'
-            : ($buy['message'] ?? 'Data purchase failed. Please try again.');
-
         return response()->json([
             'success' => $success,
-            'message' => $message
+            'message' => $success ? 'Data purchased' : ($buy['message'] ?? 'Failed')
         ]);
     }
 }

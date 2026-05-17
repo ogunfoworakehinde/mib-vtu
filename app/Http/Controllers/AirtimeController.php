@@ -22,7 +22,16 @@ class AirtimeController extends Controller {
             'amount'  => 'required|numeric|min:50'
         ]);
         $user = auth()->user();
-        if ($user->wallet_balance < $request->amount)
+
+        $faceValue = (float) $request->amount;   // what the user asked for
+
+        $short = $request->network;
+        $discount = config("profit.airtime.{$short}", 0); // e.g., 1% for MTN
+        $profit = $faceValue * $discount / 100;
+        // The cost to us from Peyflex is $faceValue - $profit, but we don't need the exact cost
+        // The user pays the full face value
+
+        if ($user->wallet_balance < $faceValue)
             return response()->json(['error'=>'Insufficient balance'], 402);
 
         $sv = new PeyflexService();
@@ -30,27 +39,18 @@ class AirtimeController extends Controller {
         $buy = $sv->buyAirtime([
             'network'       => $request->network,
             'mobile_number' => $request->phone,
-            'amount'        => $request->amount,
+            'amount'        => $faceValue,   // send the exact amount the user wants
             'reference'     => $reference
         ]);
 
         if (!$buy || !is_array($buy)) {
-            return response()->json(['error' => 'Peyflex service unavailable. Try again later.'], 502);
+            return response()->json(['error' => 'Peyflex service unavailable.'], 502);
         }
 
-        // ----- Flexible success detection -----
-        $success = false;
-        if (isset($buy['status'])) {
-            // Peyflex can return true (boolean) or 'success' (string)
-            $success = $buy['status'] === true || $buy['status'] === 'success';
-        }
-        if (!$success && isset($buy['message']) && stripos($buy['message'], 'success') !== false) {
-            $success = true;
-        }
-        // ------------------------------------
-
+        $success = isset($buy['status']) && ($buy['status'] === true || $buy['status'] === 'success');
         if ($success) {
-            (new WalletService())->debit($user, $request->amount, 'Airtime topup');
+            // Deduct the exact face value from the user's wallet
+            (new WalletService())->debit($user, $faceValue, 'Airtime topup');
         }
 
         VtuTransaction::create([
@@ -59,18 +59,15 @@ class AirtimeController extends Controller {
             'service_type' => 'airtime',
             'network'      => $request->network,
             'phone'        => $request->phone,
-            'amount'       => $request->amount,
+            'amount'       => $faceValue,   // what user paid
+            'profit'       => $profit,
             'api_response' => json_encode($buy),
             'status'       => $success ? 'success' : 'failed',
         ]);
 
-        $message = $success
-            ? 'Airtime sent successfully'
-            : ($buy['message'] ?? 'Airtime purchase failed. Please try again.');
-
         return response()->json([
             'success' => $success,
-            'message' => $message
+            'message' => $success ? 'Airtime sent' : ($buy['message'] ?? 'Failed')
         ]);
     }
 }
