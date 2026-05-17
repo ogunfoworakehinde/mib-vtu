@@ -3,17 +3,31 @@
 <h4 class="mb-3 fw-bold">Transaction History</h4>
 @if($transactions->count())
     @foreach($transactions as $t)
-    <div class="card mb-2 p-3" onclick="viewTransaction({{ $t->id }})" style="cursor:pointer">
-        <div class="d-flex justify-content-between">
+    <div class="card mb-2 p-3 shadow-sm">
+        <div class="d-flex justify-content-between align-items-center">
             <div>
-                <strong>{{ $t->network }}</strong> <small class="text-muted">{{ $t->plan_name }}</small><br>
-                <small>{{ $t->phone }}</small>
+                @if($t instanceof \App\Models\VtuTransaction)
+                    <strong>{{ $t->network }}</strong>
+                    <span class="text-muted small">{{ $t->plan_name ?? $t->service_type }}</span><br>
+                    <small class="text-muted">{{ $t->phone }}</small>
+                @else
+                    <strong>Wallet Funding</strong><br>
+                    <small class="text-muted">{{ $t->description }}</small>
+                @endif
             </div>
             <div class="text-end">
-                <span class="badge bg-{{ $t->status=='success'?'success':'warning' }}">{{ $t->status }}</span><br>
-                ₦{{ number_format($t->amount,2) }}
+                <span class="badge bg-{{ $t->status=='success'?'success':'warning' }}">{{ $t->status }}</span>
+                <br>
+                <strong>₦{{ number_format($t->amount,2) }}</strong>
+                <br>
+                <small class="text-muted">{{ $t->created_at->format('d M Y, h:i A') }}</small>
             </div>
         </div>
+        @if($t instanceof \App\Models\VtuTransaction)
+        <div class="text-end mt-1">
+            <a href="#" onclick="viewTransaction({{ $t->id }})" class="text-decoration-none small">View Receipt</a>
+        </div>
+        @endif
     </div>
     @endforeach
     {{ $transactions->links() }}
@@ -21,14 +35,12 @@
     <p class="text-muted text-center py-4">No transactions found.</p>
 @endif
 
-<!-- Receipt Modal (reuse same as dashboard) -->
+<!-- Receipt Modal -->
 <div class="modal fade" id="receiptModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content p-3">
-      <div class="modal-header"><h5>Receipt</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body" id="receiptContent">Loading...</div>
-    </div>
-  </div>
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content p-3">
+    <div class="modal-header"><h5 class="modal-title">Transaction Receipt</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body" id="receiptContent">Loading...</div>
+  </div></div>
 </div>
 
 @push('scripts')
@@ -46,8 +58,8 @@ async function viewTransaction(id) {
             document.getElementById('receiptContent').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
         } else {
             document.getElementById('receiptContent').innerHTML = `
-                <p><strong>Ref:</strong> ${data.reference}</p>
-                <p><strong>Type:</strong> ${data.service_type.toUpperCase()} – ${data.network}</p>
+                <p><strong>Reference:</strong> ${data.reference}</p>
+                <p><strong>Service:</strong> ${data.service_type.toUpperCase()} - ${data.network}</p>
                 <p><strong>Phone:</strong> ${data.phone}</p>
                 <p><strong>Plan:</strong> ${data.plan_name || 'N/A'}</p>
                 <p><strong>Amount:</strong> ₦${parseFloat(data.amount).toFixed(2)}</p>
