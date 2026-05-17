@@ -28,17 +28,27 @@ class AirtimeController extends Controller {
         $sv = new PeyflexService();
         $reference = 'AT-'.Str::random(16);
         $buy = $sv->buyAirtime([
-         'network'       => $request->network,
-         'mobile_number' => $request->phone,
-         'amount'        => $request->amount,
-         'reference'     => $reference
-          ]);
+            'network'       => $request->network,
+            'mobile_number' => $request->phone,
+            'amount'        => $request->amount,
+            'reference'     => $reference
+        ]);
 
         if (!$buy || !is_array($buy)) {
             return response()->json(['error' => 'Peyflex service unavailable. Try again later.'], 502);
         }
 
-        $success = isset($buy['status']) && $buy['status'] === 'success';
+        // ----- Flexible success detection -----
+        $success = false;
+        if (isset($buy['status'])) {
+            // Peyflex can return true (boolean) or 'success' (string)
+            $success = $buy['status'] === true || $buy['status'] === 'success';
+        }
+        if (!$success && isset($buy['message']) && stripos($buy['message'], 'success') !== false) {
+            $success = true;
+        }
+        // ------------------------------------
+
         if ($success) {
             (new WalletService())->debit($user, $request->amount, 'Airtime topup');
         }

@@ -52,17 +52,26 @@ class DataController extends Controller {
 
         $reference = 'DT-'.Str::random(16);
         $buy = $sv->buyData([
-          'network'       => $request->network,
-          'plan_code'     => $request->plan_code,
-          'mobile_number' => $request->phone,
-          'reference'     => $reference
-           ]);
+            'network'       => $request->network,
+            'plan_code'     => $request->plan_code,
+            'mobile_number' => $request->phone,
+            'reference'     => $reference
+        ]);
 
         if (!$buy || !is_array($buy)) {
             return response()->json(['error' => 'Peyflex service unavailable. Try again later.'], 502);
         }
 
-        $success = isset($buy['status']) && $buy['status'] === 'success';
+        // ----- Flexible success detection -----
+        $success = false;
+        if (isset($buy['status'])) {
+            $success = $buy['status'] === true || $buy['status'] === 'success';
+        }
+        if (!$success && isset($buy['message']) && stripos($buy['message'], 'success') !== false) {
+            $success = true;
+        }
+        // ------------------------------------
+
         if ($success) {
             (new WalletService())->debit($user, $amount, 'Data: '.$plan['label']);
         }
