@@ -32,7 +32,7 @@ class AirtimeController extends Controller {
         $buy = $sv->buyAirtime([
             'network'       => $request->network,
             'mobile_number' => $request->phone,
-            'amount'        => $faceValue,   // send exactly what user wants
+            'amount'        => $faceValue,
             'reference'     => $reference
         ]);
 
@@ -40,12 +40,29 @@ class AirtimeController extends Controller {
             return response()->json(['error' => 'Peyflex service unavailable.'], 502);
         }
 
-        $success = isset($buy['status']) && ($buy['status'] === true || $buy['status'] === 'success');
+        // ---------- STRONGER SUCCESS DETECTION ----------
+        $success = false;
+        if (isset($buy['status'])) {
+            // status can be boolean true, string 'success', or integer 200
+            if ($buy['status'] === true || $buy['status'] === 'success' || $buy['status'] === 200) {
+                $success = true;
+            }
+        }
+        if (!$success && isset($buy['success']) && $buy['success'] === true) {
+            $success = true;
+        }
+        if (!$success && isset($buy['code']) && $buy['code'] == 200) {
+            $success = true;
+        }
+        if (!$success && isset($buy['message']) && stripos($buy['message'], 'success') !== false) {
+            $success = true;
+        }
+        // -------------------------------------------------
+
         if ($success) {
             (new WalletService())->debit($user, $faceValue, 'Airtime topup');
         }
 
-        // Calculate profit based on airtime discount
         $short = $request->network;
         $discount = config("profit.airtime.{$short}", 0);
         $profit = $faceValue * $discount / 100;
@@ -62,9 +79,13 @@ class AirtimeController extends Controller {
             'status'       => $success ? 'success' : 'failed',
         ]);
 
+        $message = $success
+            ? 'Airtime sent'
+            : ($buy['message'] ?? 'Airtime purchase failed. Please try again.');
+
         return response()->json([
             'success' => $success,
-            'message' => $success ? 'Airtime sent' : ($buy['message'] ?? 'Failed')
+            'message' => $message
         ]);
     }
 }

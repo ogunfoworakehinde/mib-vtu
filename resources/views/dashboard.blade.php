@@ -56,6 +56,7 @@
             <strong>{{ $t->network }}</strong>
             <span class="text-muted small">{{ $t->plan_name }}</span><br>
             <small class="text-muted">{{ $t->phone }}</small>
+            <br><small class="text-muted">{{ $t->created_at->format('d M, h:i A') }}</small>
         </div>
         <div class="text-end">
             <span class="badge bg-{{ $t->status=='success'?'success':'warning' }}">{{ $t->status }}</span>

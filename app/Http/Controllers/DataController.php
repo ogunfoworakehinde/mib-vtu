@@ -23,12 +23,11 @@ class DataController extends Controller {
             return response()->json([]);
         }
         $plans = $result['plans'];
-        // Return prices exactly as provided by Peyflex
         $mapped = array_map(function($p) {
             return [
                 'code'  => $p['plan_code'],
                 'name'  => $p['label'],
-                'price' => $p['amount']   // standard price
+                'price' => $p['amount']
             ];
         }, $plans);
         return response()->json($mapped);
@@ -43,12 +42,11 @@ class DataController extends Controller {
         $user = auth()->user();
         $sv = new PeyflexService();
 
-        // Fetch the plan to get the standard price
         $result = $sv->getDataPlans($request->network);
         $plans = $result['plans'] ?? [];
         $plan = collect($plans)->firstWhere('plan_code', $request->plan_code);
         if (!$plan) return response()->json(['error'=>'Invalid plan'], 400);
-        $amount = $plan['amount'];   // standard price the user pays
+        $amount = $plan['amount'];
 
         if ($user->wallet_balance < $amount)
             return response()->json(['error'=>'Insufficient balance'], 402);
@@ -65,12 +63,28 @@ class DataController extends Controller {
             return response()->json(['error' => 'Peyflex service unavailable.'], 502);
         }
 
-        $success = isset($buy['status']) && ($buy['status'] === true || $buy['status'] === 'success');
+        // ---------- STRONGER SUCCESS DETECTION ----------
+        $success = false;
+        if (isset($buy['status'])) {
+            if ($buy['status'] === true || $buy['status'] === 'success' || $buy['status'] === 200) {
+                $success = true;
+            }
+        }
+        if (!$success && isset($buy['success']) && $buy['success'] === true) {
+            $success = true;
+        }
+        if (!$success && isset($buy['code']) && $buy['code'] == 200) {
+            $success = true;
+        }
+        if (!$success && isset($buy['message']) && stripos($buy['message'], 'success') !== false) {
+            $success = true;
+        }
+        // -------------------------------------------------
+
         if ($success) {
             (new WalletService())->debit($user, $amount, 'Data: '.$plan['label']);
         }
 
-        // Calculate profit based on discount
         $short = explode('_', $request->network)[0];
         $discount = config("profit.data.{$short}", 0);
         $profit = $amount * $discount / 100;
