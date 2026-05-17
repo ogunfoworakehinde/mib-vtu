@@ -50,12 +50,17 @@
 {{-- ========== RECENT TRANSACTIONS ========== --}}
 <h5 class="mb-3 fw-bold">Recent Transactions</h5>
 @forelse($transactions as $t)
-<div class="card mb-2 p-3 shadow-sm" style="cursor:pointer" onclick="viewTransaction({{ $t->id }})">
+<div class="card mb-2 p-3 shadow-sm">
     <div class="d-flex justify-content-between align-items-center">
         <div>
-            <strong>{{ $t->network }}</strong>
-            <span class="text-muted small">{{ $t->plan_name }}</span><br>
-            <small class="text-muted">{{ $t->phone }}</small>
+            @if($t instanceof \App\Models\VtuTransaction)
+                <strong>{{ $t->network }}</strong>
+                <span class="text-muted small">{{ $t->plan_name ?? $t->service_type }}</span><br>
+                <small class="text-muted">{{ $t->phone }}</small>
+            @else
+                <strong>Wallet Funding</strong><br>
+                <small class="text-muted">{{ $t->description }}</small>
+            @endif
             <br><small class="text-muted">{{ $t->created_at->format('d M, h:i A') }}</small>
         </div>
         <div class="text-end">
@@ -63,6 +68,11 @@
             <br><strong>₦{{ number_format($t->amount,2) }}</strong>
         </div>
     </div>
+    @if($t instanceof \App\Models\VtuTransaction)
+    <div class="text-end mt-1">
+        <a href="#" onclick="viewTransaction({{ $t->id }})" class="text-decoration-none small">View Receipt</a>
+    </div>
+    @endif
 </div>
 @empty
 <p class="text-muted text-center py-4">No transactions yet.</p>
