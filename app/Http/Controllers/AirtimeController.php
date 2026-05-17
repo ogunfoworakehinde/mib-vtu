@@ -22,14 +22,7 @@ class AirtimeController extends Controller {
             'amount'  => 'required|numeric|min:50'
         ]);
         $user = auth()->user();
-
-        $faceValue = (float) $request->amount;   // what the user asked for
-
-        $short = $request->network;
-        $discount = config("profit.airtime.{$short}", 0); // e.g., 1% for MTN
-        $profit = $faceValue * $discount / 100;
-        // The cost to us from Peyflex is $faceValue - $profit, but we don't need the exact cost
-        // The user pays the full face value
+        $faceValue = (float) $request->amount;
 
         if ($user->wallet_balance < $faceValue)
             return response()->json(['error'=>'Insufficient balance'], 402);
@@ -39,7 +32,7 @@ class AirtimeController extends Controller {
         $buy = $sv->buyAirtime([
             'network'       => $request->network,
             'mobile_number' => $request->phone,
-            'amount'        => $faceValue,   // send the exact amount the user wants
+            'amount'        => $faceValue,   // send exactly what user wants
             'reference'     => $reference
         ]);
 
@@ -49,9 +42,13 @@ class AirtimeController extends Controller {
 
         $success = isset($buy['status']) && ($buy['status'] === true || $buy['status'] === 'success');
         if ($success) {
-            // Deduct the exact face value from the user's wallet
             (new WalletService())->debit($user, $faceValue, 'Airtime topup');
         }
+
+        // Calculate profit based on airtime discount
+        $short = $request->network;
+        $discount = config("profit.airtime.{$short}", 0);
+        $profit = $faceValue * $discount / 100;
 
         VtuTransaction::create([
             'user_id'      => $user->id,
@@ -59,8 +56,8 @@ class AirtimeController extends Controller {
             'service_type' => 'airtime',
             'network'      => $request->network,
             'phone'        => $request->phone,
-            'amount'       => $faceValue,   // what user paid
-            'profit'       => $profit,
+            'amount'       => $faceValue,
+            'profit'       => round($profit, 2),
             'api_response' => json_encode($buy),
             'status'       => $success ? 'success' : 'failed',
         ]);

@@ -23,23 +23,12 @@ class DataController extends Controller {
             return response()->json([]);
         }
         $plans = $result['plans'];
-        // get discount percentage for this network
-        $short = explode('_', $networkId)[0]; // e.g., 'mtn'
-        $discount = config("profit.data.{$short}", 0); // 0 if not set
-
-        $mapped = array_map(function($p) use ($discount) {
-            $cost = $p['amount']; // our cost from Peyflex
-            if ($discount > 0) {
-                // standard price = cost / (1 - discount/100)
-                $standardPrice = round($cost / (1 - $discount / 100), 2);
-            } else {
-                $standardPrice = $cost; // no discount, sell at cost
-            }
+        // Return prices exactly as provided by Peyflex
+        $mapped = array_map(function($p) {
             return [
                 'code'  => $p['plan_code'],
                 'name'  => $p['label'],
-                'price' => $standardPrice,   // displayed to user
-                'cost'  => $cost             // for profit calculation
+                'price' => $p['amount']   // standard price
             ];
         }, $plans);
         return response()->json($mapped);
@@ -54,23 +43,14 @@ class DataController extends Controller {
         $user = auth()->user();
         $sv = new PeyflexService();
 
-        // Fetch plan to get our cost and the standard price
+        // Fetch the plan to get the standard price
         $result = $sv->getDataPlans($request->network);
         $plans = $result['plans'] ?? [];
         $plan = collect($plans)->firstWhere('plan_code', $request->plan_code);
         if (!$plan) return response()->json(['error'=>'Invalid plan'], 400);
-        $cost = $plan['amount'];
+        $amount = $plan['amount'];   // standard price the user pays
 
-        $short = explode('_', $request->network)[0];
-        $discount = config("profit.data.{$short}", 0);
-        if ($discount > 0) {
-            $standardPrice = round($cost / (1 - $discount / 100), 2);
-        } else {
-            $standardPrice = $cost;
-        }
-        $profit = $standardPrice - $cost;
-
-        if ($user->wallet_balance < $standardPrice)
+        if ($user->wallet_balance < $amount)
             return response()->json(['error'=>'Insufficient balance'], 402);
 
         $reference = 'DT-'.Str::random(16);
@@ -87,9 +67,13 @@ class DataController extends Controller {
 
         $success = isset($buy['status']) && ($buy['status'] === true || $buy['status'] === 'success');
         if ($success) {
-            // Debit the user the STANDARD price
-            (new WalletService())->debit($user, $standardPrice, 'Data: '.$plan['label']);
+            (new WalletService())->debit($user, $amount, 'Data: '.$plan['label']);
         }
+
+        // Calculate profit based on discount
+        $short = explode('_', $request->network)[0];
+        $discount = config("profit.data.{$short}", 0);
+        $profit = $amount * $discount / 100;
 
         VtuTransaction::create([
             'user_id'      => $user->id,
@@ -99,8 +83,8 @@ class DataController extends Controller {
             'phone'        => $request->phone,
             'plan_name'    => $plan['label'],
             'plan_code'    => $plan['plan_code'],
-            'amount'       => $standardPrice,   // what user paid
-            'profit'       => $profit,
+            'amount'       => $amount,
+            'profit'       => round($profit, 2),
             'api_response' => json_encode($buy),
             'status'       => $success ? 'success' : 'failed',
         ]);
