@@ -18,16 +18,39 @@ class DataController extends Controller {
     public function plans(Request $request) {
         $networkId = $request->network_id;
         $sv = new PeyflexService();
+
+        // Support combined MTN (multiple identifiers comma‑separated)
+        if (str_contains($networkId, ',')) {
+            $identifiers = explode(',', $networkId);
+            $allPlans = [];
+            foreach ($identifiers as $id) {
+                $result = $sv->getDataPlans($id);
+                if ($result && isset($result['plans'])) {
+                    foreach ($result['plans'] as $p) {
+                        $allPlans[] = [
+                            'code'    => $p['plan_code'],
+                            'name'    => $p['label'],
+                            'price'   => $p['amount'],
+                            'network' => $id   // the exact sub‑network for this plan
+                        ];
+                    }
+                }
+            }
+            return response()->json($allPlans);
+        }
+
+        // Single network
         $result = $sv->getDataPlans($networkId);
         if (!$result || !isset($result['plans'])) {
             return response()->json([]);
         }
         $plans = $result['plans'];
-        $mapped = array_map(function($p) {
+        $mapped = array_map(function($p) use ($networkId) {
             return [
-                'code'  => $p['plan_code'],
-                'name'  => $p['label'],
-                'price' => $p['amount']
+                'code'    => $p['plan_code'],
+                'name'    => $p['label'],
+                'price'   => $p['amount'],
+                'network' => $networkId
             ];
         }, $plans);
         return response()->json($mapped);
@@ -35,7 +58,7 @@ class DataController extends Controller {
 
     public function buy(Request $request) {
         $request->validate([
-            'network'   => 'required',
+            'network'   => 'required',     // sub‑network identifier (e.g. mtn_gifting_data)
             'plan_code' => 'required',
             'phone'     => 'required|digits:11'
         ]);
