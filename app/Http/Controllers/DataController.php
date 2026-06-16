@@ -80,6 +80,7 @@ class DataController extends Controller {
             'plan_code'     => $request->plan_code,
             'mobile_number' => $request->phone,
             'reference'     => $reference
+            'product'       => 'data'           // <-- new line
         ]);
 
         if (!$buy || !is_array($buy)) {

@@ -34,6 +34,7 @@ class AirtimeController extends Controller {
             'mobile_number' => $request->phone,
             'amount'        => $faceValue,
             'reference'     => $reference
+            'product'       => 'airtime'        // <-- new line
         ]);
 
         if (!$buy || !is_array($buy)) {
