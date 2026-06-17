@@ -33,18 +33,16 @@ class AirtimeController extends Controller {
             'network'       => $request->network,
             'mobile_number' => $request->phone,
             'amount'        => $faceValue,
-            'reference'     => $reference
-            'product'       => 'airtime'        // <-- new line
+            'reference'     => $reference,
+            'product'       => 'airtime'
         ]);
 
         if (!$buy || !is_array($buy)) {
             return response()->json(['error' => 'Peyflex service unavailable.'], 502);
         }
 
-        // ---------- STRONGER SUCCESS DETECTION ----------
         $success = false;
         if (isset($buy['status'])) {
-            // status can be boolean true, string 'success', or integer 200
             if ($buy['status'] === true || $buy['status'] === 'success' || $buy['status'] === 200) {
                 $success = true;
             }
@@ -58,7 +56,6 @@ class AirtimeController extends Controller {
         if (!$success && isset($buy['message']) && stripos($buy['message'], 'success') !== false) {
             $success = true;
         }
-        // -------------------------------------------------
 
         if ($success) {
             (new WalletService())->debit($user, $faceValue, 'Airtime topup');
@@ -80,13 +77,9 @@ class AirtimeController extends Controller {
             'status'       => $success ? 'success' : 'failed',
         ]);
 
-        $message = $success
-            ? 'Airtime sent'
-            : ($buy['message'] ?? 'Airtime purchase failed. Please try again.');
-
         return response()->json([
             'success' => $success,
-            'message' => $message
+            'message' => $success ? 'Airtime sent' : ($buy['message'] ?? 'Failed')
         ]);
     }
 }

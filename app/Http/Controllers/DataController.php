@@ -31,7 +31,7 @@ class DataController extends Controller {
                             'code'    => $p['plan_code'],
                             'name'    => $p['label'],
                             'price'   => $p['amount'],
-                            'network' => $id   // the exact sub‑network for this plan
+                            'network' => $id
                         ];
                     }
                 }
@@ -58,7 +58,7 @@ class DataController extends Controller {
 
     public function buy(Request $request) {
         $request->validate([
-            'network'   => 'required',     // sub‑network identifier (e.g. mtn_gifting_data)
+            'network'   => 'required',
             'plan_code' => 'required',
             'phone'     => 'required|digits:11'
         ]);
@@ -79,8 +79,8 @@ class DataController extends Controller {
             'network'       => $request->network,
             'plan_code'     => $request->plan_code,
             'mobile_number' => $request->phone,
-            'reference'     => $reference
-            'product'       => 'data'           // <-- new line
+            'reference'     => $reference,
+            'product'       => 'data'            // <-- comma added
         ]);
 
         if (!$buy || !is_array($buy)) {
